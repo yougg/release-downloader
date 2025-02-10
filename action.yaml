@@ -1,0 +1,50 @@
+name: 'Gitea Release Downloader'
+description: 'Download files from Gitea release attachments and source archives'
+inputs:
+  token:
+    description: 'The access token to interact with Gitea'
+    required: true
+  insecure:
+    description: 'Whether allow insecure Gitea instance'
+    required: false
+  prerelease:
+    description: "Whether it's a prerelease"
+    required: false
+  repository:
+    description: 'repository to download attachments'
+    required: false
+  version:
+    description: 'release version'
+    required: false
+  timeout:
+    description: 'time limit for requests gitea service'
+    required: false
+  downloadTo:
+    description: 'download save to directory'
+    required: false
+  sources:
+    description: 'source archives to be download'
+    required: false
+  files:
+    description: 'files to be download'
+    required: false
+  batch:
+    description: 'batch download files from multiple repository releases in one step'
+    required: false
+outputs:
+  tag:
+    description: 'the tag which matched version rule'
+  url:
+    description: 'the release web page url'
+  sha:
+    description: 'commit hash on the matched release tag'
+  body:
+    description: 'the release description'
+  user:
+    description: 'the release publisher username'
+  time:
+    description: 'the release publish time'
+
+runs:
+  using: 'go'
+  main: 'main.go'
