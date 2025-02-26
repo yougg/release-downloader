@@ -222,6 +222,7 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 	}
 	// if downloaded source and no files to be download then return
 	if gotSrc && len(ref.Files) == 0 {
+		setOutput(release, status)
 		return
 	}
 
@@ -265,6 +266,10 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 	if !ref.Single {
 		return
 	}
+	setOutput(release, status)
+}
+
+func setOutput(release *gitea.Release, status *gitea.CombinedStatus) {
 	gha.SetOutput(`tag`, release.TagName)
 	gha.SetOutput(`url`, release.HTMLURL)
 	gha.SetOutput(`sha`, status.SHA)
