@@ -162,10 +162,6 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 		return
 	}
 	gha.Infof(V("hit tag: %s"), release.TagName)
-	if len(ref.Files) > 0 && len(release.Attachments) == 0 {
-		gha.Fatalf(X("no attachment found in release: %s"), release.TagName)
-		return
-	}
 
 	status, resp, err := client.GetCombinedStatus(owner, repo, release.TagName)
 	if err != nil || resp == nil {
@@ -177,6 +173,11 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 		return
 	}
 	gha.Infof(V("tag SHA: %s\n"), status.SHA)
+
+	if len(ref.Files) > 0 && len(release.Attachments) == 0 {
+		gha.Fatalf(X("no attachment found in release: %s"), release.TagName)
+		return
+	}
 
 	dir := strings.TrimSpace(ref.DownloadTo)
 	if dir == `` {
