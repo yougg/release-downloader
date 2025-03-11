@@ -121,7 +121,7 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 	}
 	gha.Infof(V("repository: %s"), ref.Repository)
 	gha.Infof(V("prerelease: %s"), ref.Prerelease)
-	gha.Infof(V("version: %s\n"), ref.Version)
+	gha.Infof(V("version rule: %s\n"), ref.Version)
 	if ref.Sources == `` && ref.Files == `` {
 		gha.Fatalf(X("input both empty sources and files"))
 		return
@@ -157,7 +157,7 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 		}
 	}
 	if release == nil {
-		gha.Infof(V("tags:%v"), tags)
+		gha.Infof(V("tags: %v"), tags)
 		gha.Fatalf(X("no release tag matched version rule"))
 		return
 	}
@@ -257,7 +257,7 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 		gha.Infof(V("createAt: %s"), a.Created)
 	}
 	if noFile {
-		gha.Infof(V("files: %v"), fileList)
+		gha.Infof(V("files rule: %v"), fileList)
 		gha.Infof(V("attachments: %v"), attachments)
 		gha.Fatalf(X("no release attachment matched file rule"))
 		return
@@ -277,6 +277,14 @@ func setOutput(release *gitea.Release, status *gitea.CombinedStatus) {
 	gha.SetOutput(`body`, release.Note)
 	gha.SetOutput(`user`, release.Publisher.UserName)
 	gha.SetOutput(`status`, string(status.State))
+	gha.SetOutput(`stable`, stableMark(release))
+}
+
+func stableMark(release *gitea.Release) string {
+	if release.IsPrerelease || release.IsDraft {
+		return ``
+	}
+	return `✔`
 }
 
 // download will download an url and store it in local filepath
