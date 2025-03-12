@@ -172,6 +172,15 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 		gha.Fatalf(X("get tag <%s> status response: %s"), release.TagName, resp.Status)
 		return
 	}
+	if status.SHA == `` {
+		var tag *gitea.Tag
+		tag, resp, err = client.GetTag(owner, repo, release.TagName)
+		if err != nil || resp == nil {
+			gha.Fatalf(X("get tag by name <%s>: %v"), release.TagName, err)
+			return
+		}
+		status.SHA = tag.Commit.SHA
+	}
 	gha.Infof(V("tag SHA: %s\n"), status.SHA)
 
 	if len(ref.Files) > 0 && len(release.Attachments) == 0 {
