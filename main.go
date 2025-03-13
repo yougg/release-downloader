@@ -181,6 +181,12 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 		}
 		status.SHA = tag.Commit.SHA
 	}
+	var commit *gitea.Commit
+	commit, resp, err = client.GetSingleCommit(owner, repo, status.SHA)
+	if err != nil || resp == nil {
+		gha.Fatalf(X("get commit by SHA <%s>: %v"), status.SHA, err)
+		return
+	}
 	gha.Infof(V("tag SHA: %s\n"), status.SHA)
 
 	if len(ref.Files) > 0 && len(release.Attachments) == 0 {
@@ -231,7 +237,7 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 	}
 	// if downloaded source and no files to be download then return
 	if gotSrc && len(ref.Files) == 0 {
-		setOutput(release, status)
+		setOutput(release, status, commit)
 		return
 	}
 
@@ -275,16 +281,10 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 	if !ref.Single {
 		return
 	}
-	setOutput(release, status)
-	var commit *gitea.Commit
-	commit, resp, err = client.GetSingleCommit(owner, repo, status.SHA)
-	if err != nil || resp == nil {
-		return
-	}
-	gha.SetOutput(`commit`, commit.HTMLURL)
+	setOutput(release, status, commit)
 }
 
-func setOutput(release *gitea.Release, status *gitea.CombinedStatus) {
+func setOutput(release *gitea.Release, status *gitea.CombinedStatus, commit *gitea.Commit) {
 	gha.SetOutput(`tag`, release.TagName)
 	gha.SetOutput(`url`, release.HTMLURL)
 	gha.SetOutput(`sha`, status.SHA)
@@ -293,6 +293,7 @@ func setOutput(release *gitea.Release, status *gitea.CombinedStatus) {
 	gha.SetOutput(`user`, release.Publisher.UserName)
 	gha.SetOutput(`status`, string(status.State))
 	gha.SetOutput(`stable`, stableMark(release))
+	gha.SetOutput(`commit`, commit.HTMLURL)
 }
 
 func stableMark(release *gitea.Release) string {
