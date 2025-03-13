@@ -276,6 +276,12 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 		return
 	}
 	setOutput(release, status)
+	var commit *gitea.Commit
+	commit, resp, err = client.GetSingleCommit(owner, repo, status.SHA)
+	if err != nil || resp == nil {
+		return
+	}
+	gha.SetOutput(`commit`, commit.HTMLURL)
 }
 
 func setOutput(release *gitea.Release, status *gitea.CombinedStatus) {

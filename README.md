@@ -23,14 +23,16 @@ The following are optional as `step.with` keys
 
 Get each result in step with these keys: `${{ steps.<step_id>.outputs.<key> }}`
 
-| Name   | Type   | Description                                |
-|--------|--------|--------------------------------------------|
-| `tag`  | String | the tag which matched version rule         |
-| `url`  | String | the release web page url                   |
-| `sha`  | String | the commit hash on the matched release tag |
-| `body` | String | the release description                    |
-| `user` | String | the release publisher username             |
-| `time` | String | the release publish time                   |
+| Name     | Type   | Description                                |
+|----------|--------|--------------------------------------------|
+| `tag`    | String | the tag which matched version rule         |
+| `url`    | String | the release web page url                   |
+| `sha`    | String | the commit hash on the matched release tag |
+| `commit` | String | the commit html url on the sha             |
+| `body`   | String | the release description                    |
+| `user`   | String | the release publisher username             |
+| `time`   | String | the release publish time                   |
+| `stable` | String | mark ✔ for stable release or empty         |
 
 > `outputs` is disabled when batch mode is enabled
 
