@@ -45,7 +45,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v5
         with:
-          go-version: '>=1.23.4'
+          go-version: '>=1.24.1'
       - name: download example
         uses: https://github.com/yougg/release-downloader@main
         with:
@@ -54,7 +54,7 @@ jobs:
           prerelease: true   # 留空'': 所有发布版本, true: 仅预发布版本, false: 仅正式发布版本
           version: 'v0.0.*'  # 匹配版本: 留空''/*/latest(取最新发布), 固定版本(ex: v1.2.3), 通配版本(ex: v2.3.*, 取匹配最新的)
           timeout: 0         # 请求超时: 留空''/0(无超时), 指定超时: 120s,5m,3h
-          downloadTo: action # 下载保存目录: sc,se,plugin,sidecar,mirror,agent
+          downloadTo: action # 下载保存目录: 留空''/.(当前目录), 指定目录(ex: action)
           sources: main.zip  # 下载源文件包: 留空'': 不下载源文件, VERSION.zip: 同version规则, <branch|tag|SHA>.<tar.gz|zip>: 下载指定分支/标签/Hash对应的压缩包
           files: |-          # 下载文件列表: *: 取所有文件, 固定文件: (ex: example.tar.gz), 通配文件: (ex: *.tar.gz)
             *.tar.gz
@@ -78,7 +78,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v5
         with:
-          go-version: '>=1.23.4'
+          go-version: '>=1.24.1'
       - name: output downloads example
         uses: https://github.com/yougg/release-downloader@main
         id: download0
@@ -109,7 +109,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v5
         with:
-          go-version: '>=1.23.4'
+          go-version: '>=1.24.1'
       - name: batch download example
         uses: https://github.com/yougg/release-downloader@main
         with:
