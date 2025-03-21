@@ -28,8 +28,9 @@ type Reference struct {
 }
 
 var (
-	replacer = strings.NewReplacer(`*`, `.*`)
-	split    = regexp.MustCompile(`[\n,]+`)
+	addDot  = strings.NewReplacer(`*`, `.*`)
+	uniqDot = strings.NewReplacer(`..*`, `.*`)
+	split   = regexp.MustCompile(`[\n,]+`)
 
 	token string
 )
@@ -114,7 +115,7 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 	if ref.Version == `` || ref.Version == `latest` || ref.Version == `LATEST` {
 		ref.Version = `*`
 	}
-	version, err := regexp.Compile(`^` + replacer.Replace(ref.Version) + `$`)
+	version, err := regexp.Compile(`^` + uniqDot.Replace(addDot.Replace(ref.Version)) + `$`)
 	if err != nil {
 		gha.Fatalf(X("failed to compile version regexp: %v"), err)
 		return
