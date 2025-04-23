@@ -223,11 +223,11 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 	var srcRelease *gitea.Release
 	if ref.Sources != `` {
 		srcRelease = hitReleases[hitTags[len(hitTags)-1]]
+		if srcRelease == nil {
+			srcRelease = release
+		}
+		gha.Infof(V("hit tag for source: %s"), srcRelease.TagName)
 	}
-	if srcRelease == nil {
-		srcRelease = release
-	}
-	gha.Infof(V("hit tag for source: %s"), srcRelease.TagName)
 	var gotSrc bool
 	var srcURL, srcName string
 	// download sources archive
