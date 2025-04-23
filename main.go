@@ -220,20 +220,28 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 		return
 	}
 
+	var srcRelease *gitea.Release
+	if ref.Sources != `` {
+		srcRelease = hitReleases[hitTags[len(hitTags)-1]]
+	}
+	if srcRelease == nil {
+		srcRelease = release
+	}
+	gha.Infof(V("hit tag for source: %s"), srcRelease.TagName)
 	var gotSrc bool
 	var srcURL, srcName string
 	// download sources archive
 	if ref.Sources == `VERSION.tar.gz` || ref.Sources == `VERSION.zip` {
 		switch filepath.Ext(ref.Sources) {
 		case `.gz`:
-			srcURL = release.TarURL
-			srcName = filepath.Base(release.TarURL)
+			srcURL = srcRelease.TarURL
+			srcName = filepath.Base(srcRelease.TarURL)
 		case `.zip`:
-			srcURL = release.ZipURL
-			srcName = filepath.Base(release.ZipURL)
+			srcURL = srcRelease.ZipURL
+			srcName = filepath.Base(srcRelease.ZipURL)
 		}
 	} else if ref.Sources != `` {
-		srcURL = strings.TrimSuffix(release.TarURL, filepath.Base(release.TarURL)) + ref.Sources
+		srcURL = strings.TrimSuffix(srcRelease.TarURL, filepath.Base(srcRelease.TarURL)) + ref.Sources
 		srcName = strings.Replace(ref.Sources, `/`, `_`, -1)
 	}
 	if srcURL != `` && srcName != `` {
