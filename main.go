@@ -15,6 +15,7 @@ import (
 
 	"code.gitea.io/sdk/gitea"
 	gha "github.com/sethvargo/go-githubactions"
+	"golang.org/x/mod/semver"
 )
 
 type Reference struct {
@@ -146,20 +147,27 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 	}
 
 	var tags []string
-	var release *gitea.Release
+	hitReleases := make(map[string]*gitea.Release)
 	for _, r := range releases {
 		tags = append(tags, r.TagName)
 		if !version.MatchString(r.TagName) {
 			continue
 		}
-		// get matched latest created version, not the biggest version
-		if release == nil || r.CreatedAt.After(release.CreatedAt) {
+		hitReleases[r.TagName] = r
+	}
+	semver.Sort(tags)
+	var release *gitea.Release
+	for i := len(tags) - 1; i >= 0; i-- {
+		r := hitReleases[tags[i]]
+		if len(r.Attachments) > 0 {
 			release = r
+			break
 		}
+		gha.Warningf("no attachment found in release: %s, skip it", r.TagName)
 	}
 	if release == nil {
 		gha.Infof(V("tags: %v"), tags)
-		gha.Fatalf(X("no release tag matched version rule"))
+		gha.Fatalf(X("no release tag matched version rule or no attachment found in these releases"))
 		return
 	}
 	gha.Infof(V("hit tag: %s"), release.TagName)
