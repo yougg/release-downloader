@@ -255,7 +255,7 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 	}
 	// if downloaded source and no files to be download then return
 	if gotSrc && len(ref.Files) == 0 {
-		setOutput(release, status, commit)
+		setOutput(srcRelease, status, commit)
 		return
 	}
 
