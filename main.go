@@ -146,19 +146,20 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 		return
 	}
 
-	var tags []string
+	var allTags, hitTags []string
 	hitReleases := make(map[string]*gitea.Release)
 	for _, r := range releases {
-		tags = append(tags, r.TagName)
+		allTags = append(allTags, r.TagName)
 		if !version.MatchString(r.TagName) {
 			continue
 		}
+		hitTags = append(hitTags, r.TagName)
 		hitReleases[r.TagName] = r
 	}
-	semver.Sort(tags)
+	semver.Sort(hitTags)
 	var release *gitea.Release
-	for i := len(tags) - 1; i >= 0; i-- {
-		r := hitReleases[tags[i]]
+	for i := len(hitTags) - 1; i >= 0; i-- {
+		r := hitReleases[hitTags[i]]
 		if len(r.Attachments) > 0 {
 			release = r
 			break
@@ -166,7 +167,7 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 		gha.Warningf("no attachment found in release: %s, skip it", r.TagName)
 	}
 	if release == nil {
-		gha.Infof(V("tags: %v"), tags)
+		gha.Infof(V("allTags: %v"), allTags)
 		gha.Fatalf(X("no release tag matched version rule or no attachment found in these releases"))
 		return
 	}
