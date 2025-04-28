@@ -146,64 +146,6 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 		return
 	}
 
-	var allTags, hitTags []string
-	hitReleases := make(map[string]*gitea.Release)
-	for _, r := range releases {
-		allTags = append(allTags, r.TagName)
-		if !version.MatchString(r.TagName) {
-			continue
-		}
-		hitTags = append(hitTags, r.TagName)
-		hitReleases[r.TagName] = r
-	}
-	semver.Sort(hitTags)
-	var release *gitea.Release
-	for i := len(hitTags) - 1; i >= 0; i-- {
-		r := hitReleases[hitTags[i]]
-		if len(r.Attachments) > 0 {
-			release = r
-			break
-		}
-		gha.Warningf("no attachment found in release: %s, skip it", r.TagName)
-	}
-	if release == nil {
-		gha.Infof(V("allTags: %v"), allTags)
-		gha.Fatalf(X("no release tag matched version rule or no attachment found in these releases"))
-		return
-	}
-	gha.Infof(V("hit tag: %s"), release.TagName)
-
-	status, resp, err := client.GetCombinedStatus(owner, repo, release.TagName)
-	if err != nil || resp == nil {
-		gha.Fatalf(X("get tag <%s> status: %v"), release.TagName, err)
-		return
-	}
-	if resp.StatusCode != http.StatusOK {
-		gha.Fatalf(X("get tag <%s> status response: %s"), release.TagName, resp.Status)
-		return
-	}
-	if status.SHA == `` {
-		var tag *gitea.Tag
-		tag, resp, err = client.GetTag(owner, repo, release.TagName)
-		if err != nil || resp == nil {
-			gha.Fatalf(X("get tag by name <%s>: %v"), release.TagName, err)
-			return
-		}
-		status.SHA = tag.Commit.SHA
-	}
-	var commit *gitea.Commit
-	commit, resp, err = client.GetSingleCommit(owner, repo, status.SHA)
-	if err != nil || resp == nil {
-		gha.Fatalf(X("get commit by SHA <%s>: %v"), status.SHA, err)
-		return
-	}
-	gha.Infof(V("tag SHA: %s\n"), status.SHA)
-
-	if len(ref.Files) > 0 && len(release.Attachments) == 0 {
-		gha.Fatalf(X("no attachment found in release: %s"), release.TagName)
-		return
-	}
-
 	dir := strings.TrimSpace(ref.DownloadTo)
 	if dir == `` {
 		dir = `.`
@@ -220,42 +162,88 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 		return
 	}
 
-	var srcRelease *gitea.Release
+	var allTags, hitTags []string
+	hitReleases := make(map[string]*gitea.Release)
+	for _, r := range releases {
+		allTags = append(allTags, r.TagName)
+		if !version.MatchString(r.TagName) {
+			continue
+		}
+		hitTags = append(hitTags, r.TagName)
+		hitReleases[r.TagName] = r
+	}
+	semver.Sort(hitTags)
+
 	if ref.Sources != `` {
-		srcRelease = hitReleases[hitTags[len(hitTags)-1]]
+		srcRelease := hitReleases[hitTags[len(hitTags)-1]]
 		if srcRelease == nil {
-			srcRelease = release
-		}
-		gha.Infof(V("hit tag for source: %s"), srcRelease.TagName)
-	}
-	var gotSrc bool
-	var srcURL, srcName string
-	// download sources archive
-	if ref.Sources == `VERSION.tar.gz` || ref.Sources == `VERSION.zip` {
-		switch filepath.Ext(ref.Sources) {
-		case `.gz`:
-			srcURL = srcRelease.TarURL
-			srcName = filepath.Base(srcRelease.TarURL)
-		case `.zip`:
-			srcURL = srcRelease.ZipURL
-			srcName = filepath.Base(srcRelease.ZipURL)
-		}
-	} else if ref.Sources != `` {
-		srcURL = strings.TrimSuffix(srcRelease.TarURL, filepath.Base(srcRelease.TarURL)) + ref.Sources
-		srcName = strings.Replace(ref.Sources, `/`, `_`, -1)
-	}
-	if srcURL != `` && srcName != `` {
-		if err = download(srcURL, filepath.Join(dir, srcName)); err != nil {
-			gha.Fatalf(X("download source archive %s: %v"), srcURL, err)
+			gha.Fatalf(X("no release tag matched version rule"))
 			return
 		}
-		gha.Infof(V("url: %s"), srcURL)
-		gha.Infof(V("file: %s"), filepath.Join(wd, dir, srcName))
-		gotSrc = true
+		gha.Infof(V("hit tag for source: %s"), srcRelease.TagName)
+		var gotSrc bool
+		var srcURL, srcName string
+		// download sources archive
+		if ref.Sources == `VERSION.tar.gz` || ref.Sources == `VERSION.zip` {
+			switch filepath.Ext(ref.Sources) {
+			case `.gz`:
+				srcURL = srcRelease.TarURL
+				srcName = filepath.Base(srcRelease.TarURL)
+			case `.zip`:
+				srcURL = srcRelease.ZipURL
+				srcName = filepath.Base(srcRelease.ZipURL)
+			}
+		} else if ref.Sources != `` {
+			srcURL = strings.TrimSuffix(srcRelease.TarURL, filepath.Base(srcRelease.TarURL)) + ref.Sources
+			srcName = strings.Replace(ref.Sources, `/`, `_`, -1)
+		}
+		if srcURL != `` && srcName != `` {
+			if err = download(srcURL, filepath.Join(dir, srcName)); err != nil {
+				gha.Fatalf(X("download source archive %s: %v"), srcURL, err)
+				return
+			}
+			gha.Infof(V("url: %s"), srcURL)
+			gha.Infof(V("file: %s"), filepath.Join(wd, dir, srcName))
+			gotSrc = true
+		}
+		// if downloaded source and no files to be download then return
+		if gotSrc && len(ref.Files) == 0 {
+			status, commit, err := releaseStatus(client, owner, repo, srcRelease.TagName)
+			if err != nil {
+				gha.Fatalf(X("get release status: %v"), err)
+				return
+			}
+			gha.Infof(V("src tag SHA: %s\n"), status.SHA)
+			setOutput(srcRelease, status, commit)
+			return
+		}
 	}
-	// if downloaded source and no files to be download then return
-	if gotSrc && len(ref.Files) == 0 {
-		setOutput(srcRelease, status, commit)
+
+	var release *gitea.Release
+	for i := len(hitTags) - 1; i >= 0; i-- {
+		r := hitReleases[hitTags[i]]
+		if len(r.Attachments) > 0 {
+			release = r
+			break
+		}
+		gha.Warningf("no attachment found in release: %s, skip it", r.TagName)
+	}
+	if release == nil {
+		gha.Infof(V("allTags: %v"), allTags)
+		gha.Fatalf(X("no release tag matched version rule or no attachment found in these releases"))
+		return
+	}
+	gha.Infof(V("hit tag: %s"), release.TagName)
+
+	status, commit, err := releaseStatus(client, owner, repo, release.TagName)
+	if err != nil {
+		gha.Fatalf(X("get release status: %v"), err)
+		return
+	}
+	gha.Infof(V("tag SHA: %s\n"), status.SHA)
+
+	if len(ref.Files) > 0 && len(release.Attachments) == 0 {
+		gha.Fatalf(X("no attachment found in release: %s"), release.TagName)
 		return
 	}
 
@@ -300,6 +288,33 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 		return
 	}
 	setOutput(release, status, commit)
+}
+
+func releaseStatus(client *gitea.Client, owner, repo, tagName string) (status *gitea.CombinedStatus, commit *gitea.Commit, err error) {
+	var resp *gitea.Response
+	status, resp, err = client.GetCombinedStatus(owner, repo, tagName)
+	if err != nil || resp == nil {
+		gha.Fatalf(X("get tag <%s> status: %v"), tagName, err)
+		return
+	}
+	if resp.StatusCode != http.StatusOK {
+		gha.Fatalf(X("get tag <%s> status response: %s"), tagName, resp.Status)
+		return
+	}
+	if status.SHA == `` {
+		var tag *gitea.Tag
+		tag, resp, err = client.GetTag(owner, repo, tagName)
+		if err != nil || resp == nil {
+			gha.Fatalf(X("get tag by name <%s>: %v"), tagName, err)
+			return
+		}
+		status.SHA = tag.Commit.SHA
+	}
+	commit, resp, err = client.GetSingleCommit(owner, repo, status.SHA)
+	if err != nil || resp == nil {
+		gha.Fatalf(X("get commit by SHA <%s>: %v"), status.SHA, err)
+	}
+	return
 }
 
 func setOutput(release *gitea.Release, status *gitea.CombinedStatus, commit *gitea.Commit) {
