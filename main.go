@@ -129,21 +129,33 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 		return
 	}
 
-	var resp *gitea.Response
-	releases, resp, err := client.ListReleases(owner, repo, gitea.ListReleasesOptions{
-		IsPreRelease: prerelease,
-	})
-	if err != nil || resp == nil {
-		gha.Fatalf(X("list releases: %v"), err)
-		return
-	}
-	if resp.StatusCode != http.StatusOK {
-		gha.Fatalf(X("list releases response: %s"), resp.Status)
-		return
-	}
-	if len(releases) == 0 {
-		gha.Fatalf(X("no releases found in repository"))
-		return
+	var releases []*gitea.Release
+	page := 1
+	for {
+		rs, resp, err := client.ListReleases(owner, repo, gitea.ListReleasesOptions{
+			ListOptions: gitea.ListOptions{
+				Page:     page,
+				PageSize: 50,
+			},
+			IsPreRelease: prerelease,
+		})
+		if err != nil || resp == nil {
+			gha.Fatalf(X("list releases: %v"), err)
+			return
+		}
+		if resp.StatusCode != http.StatusOK {
+			gha.Fatalf(X("list releases response: %s"), resp.Status)
+			return
+		}
+		if len(rs) == 0 {
+			if len(releases) == 0 {
+				gha.Fatalf(X("no releases found in repository"))
+				return
+			}
+			break
+		}
+		releases = append(releases, rs...)
+		page++
 	}
 
 	dir := strings.TrimSpace(ref.DownloadTo)
