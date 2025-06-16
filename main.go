@@ -210,7 +210,7 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 			srcName = strings.Replace(ref.Sources, `/`, `_`, -1)
 		}
 		if srcURL != `` && srcName != `` {
-			if err = download(srcURL, filepath.Join(dir, srcName)); err != nil {
+			if err = download(srcURL, filepath.Join(dir, srcName), 0); err != nil {
 				gha.Fatalf(X("download source archive %s: %v"), srcURL, err)
 				return
 			}
@@ -279,7 +279,7 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 			continue
 		}
 		noFile = false
-		if err = download(a.DownloadURL, filepath.Join(dir, a.Name)); err != nil {
+		if err = download(a.DownloadURL, filepath.Join(dir, a.Name), a.Size); err != nil {
 			gha.Fatalf(X("download attachment %s: %v"), a.Name, err)
 			return
 		}
@@ -349,7 +349,7 @@ func stableMark(release *gitea.Release) string {
 }
 
 // download will download an url and store it in local filepath
-func download(url, file string) error {
+func download(url, file string, size int64) error {
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return err
@@ -369,9 +369,12 @@ func download(url, file string) error {
 	}
 	defer func() { _ = out.Close() }()
 	// Write the body to file
-	_, err = io.Copy(out, resp.Body)
+	n, err := io.Copy(out, resp.Body)
 	if err != nil {
 		return err
+	}
+	if size > 0 && n != size {
+		return fmt.Errorf("download invalid file size, want: %d, got: %d", size, n)
 	}
 
 	return nil
