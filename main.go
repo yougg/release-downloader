@@ -121,9 +121,9 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 		gha.Fatalf(X("failed to compile version regexp: %v"), err)
 		return
 	}
-	gha.Infof(V("repository: %s"), ref.Repository)
-	gha.Infof(V("prerelease: %s"), ref.Prerelease)
-	gha.Infof(V("version rule: %s\n"), ref.Version)
+	gha.Infof("repository: %s", V(ref.Repository))
+	gha.Infof("prerelease: %s", V(ref.Prerelease))
+	gha.Infof("version rule: %s\n", V(ref.Version))
 	if ref.Sources == `` && ref.Files == `` {
 		gha.Fatalf(X("input both empty sources and files"))
 		return
@@ -192,7 +192,7 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 			gha.Fatalf(X("no release tag matched version rule"))
 			return
 		}
-		gha.Infof(V("hit tag for source: %s"), srcRelease.TagName)
+		gha.Infof("hit tag for source: %s", V(srcRelease.TagName))
 		var gotSrc bool
 		var srcURL, srcName string
 		// download sources archive
@@ -214,8 +214,8 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 				gha.Fatalf(X("download source archive %s: %v"), srcURL, err)
 				return
 			}
-			gha.Infof(V("url: %s"), srcURL)
-			gha.Infof(V("file: %s"), filepath.Join(wd, dir, srcName))
+			gha.Infof("url: %s", V(srcURL))
+			gha.Infof("file: %s", V(filepath.Join(wd, dir, srcName)))
 			gotSrc = true
 		}
 		// if downloaded source and no files to be download then return
@@ -225,7 +225,7 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 				gha.Fatalf(X("get release status: %v"), err)
 				return
 			}
-			gha.Infof(V("src tag SHA: %s\n"), status.SHA)
+			gha.Infof("src tag SHA: %s\n", V(status.SHA))
 			setOutput(srcRelease, status, commit)
 			return
 		}
@@ -241,18 +241,18 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 		gha.Warningf("no attachment found in release: %s, skip it", r.TagName)
 	}
 	if release == nil {
-		gha.Infof(V("allTags: %v"), allTags)
+		gha.Infof("allTags: %s", V(fmt.Sprintf("%v", allTags)))
 		gha.Fatalf(X("no release tag matched version rule or no attachment found in these releases"))
 		return
 	}
-	gha.Infof(V("hit tag: %s"), release.TagName)
+	gha.Infof("hit tag: %s", V(release.TagName))
 
 	status, commit, err := releaseStatus(client, owner, repo, release.TagName)
 	if err != nil {
 		gha.Fatalf(X("get release status: %v"), err)
 		return
 	}
-	gha.Infof(V("tag SHA: %s\n"), status.SHA)
+	gha.Infof("tag SHA: %s\n", V(status.SHA))
 
 	if len(ref.Files) > 0 && len(release.Attachments) == 0 {
 		gha.Fatalf(X("no attachment found in release: %s"), release.TagName)
@@ -284,14 +284,14 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 			return
 		}
 		gha.Infof("")
-		gha.Infof(V("url: %s"), a.DownloadURL)
-		gha.Infof(V("file: %s"), filepath.Join(wd, dir, a.Name))
-		gha.Infof(V("size: %s"), byteCountIEC(a.Size))
-		gha.Infof(V("createAt: %s"), a.Created)
+		gha.Infof("url: %s", V(a.DownloadURL))
+		gha.Infof("file: %s", V(filepath.Join(wd, dir, a.Name)))
+		gha.Infof("size: %s", V(byteCountIEC(a.Size)))
+		gha.Infof("createAt: %s", V(a.Created.String()))
 	}
 	if noFile {
-		gha.Infof(V("files rule: %v"), fileList)
-		gha.Infof(V("attachments: %v"), attachments)
+		gha.Infof("files rule: %s", V(fmt.Sprintf("%v", fileList)))
+		gha.Infof("attachments: %s", V(fmt.Sprintf("%v", attachments)))
 		gha.Fatalf(X("no release attachment matched file rule"))
 		return
 	}
