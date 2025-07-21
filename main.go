@@ -69,9 +69,22 @@ func main() {
 		}
 		http.DefaultClient.Timeout = timeout
 	}
-	client, err := gitea.NewClient(ctx.ServerURL, gitea.SetToken(token), gitea.SetHTTPClient(http.DefaultClient))
-	if err != nil {
-		gha.Fatalf(X("gitea new client: %v"), err)
+	var client *gitea.Client
+	for c := range 5 {
+		client, err = gitea.NewClient(ctx.ServerURL, gitea.SetToken(token), gitea.SetHTTPClient(http.DefaultClient))
+		if err != nil {
+			gha.Errorf("failed to create gitea client: %s, retrying...", X(fmt.Sprintf("%v", err)))
+			if c == 4 {
+				gha.Fatalf(X("create gitea client failed after retry 5 times"))
+				return
+			}
+			time.Sleep(time.Second)
+			continue
+		}
+		break
+	}
+	if client == nil {
+		gha.Fatalf(X("create gitea client failed"))
 		return
 	}
 
