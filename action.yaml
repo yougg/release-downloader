@@ -47,6 +47,12 @@ outputs:
     description: 'the release publisher username'
   time:
     description: 'the release publish time'
+  stable:
+    description: 'the release stable mark'
+  commit:
+    description: 'the release commit html url'
+  size:
+    description: 'downloaded release attachments total size'
 
 runs:
   using: 'go'

@@ -34,6 +34,8 @@ Get each result in step with these keys: `${{ steps.<step_id>.outputs.<key> }}`
 | `user`   | String | the release publisher username             |
 | `time`   | String | the release publish time                   |
 | `stable` | String | mark ✔ for stable release or empty         |
+| `commit` | String | the release commit html url                |
+| `size`   | String | downloaded release attachments total size  |
 
 > `outputs` is disabled when batch mode is enabled
 

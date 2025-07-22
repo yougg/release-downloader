@@ -241,7 +241,7 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 				return
 			}
 			gha.Infof("src tag SHA: %s\n", V(status.SHA))
-			setOutput(srcRelease, status, commit)
+			setOutput(srcRelease, status, commit, 0)
 			return
 		}
 	}
@@ -280,6 +280,7 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 		excludes = split.Split(ref.Exclude, -1)
 	}
 	var attachments []string
+	var totalSize int64
 	noFile := true
 	for _, a := range release.Attachments {
 		attachments = append(attachments, a.Name)
@@ -315,6 +316,7 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 			gha.Fatalf(X("download attachment %s: %v"), a.Name, err)
 			return
 		}
+		totalSize += a.Size
 		gha.Infof("")
 		gha.Infof("url: %s", V(a.DownloadURL))
 		gha.Infof("file: %s", V(filepath.Join(wd, dir, a.Name)))
@@ -331,7 +333,7 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 	if !ref.Single {
 		return
 	}
-	setOutput(release, status, commit)
+	setOutput(release, status, commit, totalSize)
 }
 
 func releaseStatus(client *gitea.Client, owner, repo, tagName string) (status *gitea.CombinedStatus, commit *gitea.Commit, err error) {
@@ -361,7 +363,7 @@ func releaseStatus(client *gitea.Client, owner, repo, tagName string) (status *g
 	return
 }
 
-func setOutput(release *gitea.Release, status *gitea.CombinedStatus, commit *gitea.Commit) {
+func setOutput(release *gitea.Release, status *gitea.CombinedStatus, commit *gitea.Commit, size int64) {
 	gha.SetOutput(`tag`, release.TagName)
 	gha.SetOutput(`url`, release.HTMLURL)
 	gha.SetOutput(`sha`, status.SHA)
@@ -371,6 +373,7 @@ func setOutput(release *gitea.Release, status *gitea.CombinedStatus, commit *git
 	gha.SetOutput(`status`, string(status.State))
 	gha.SetOutput(`stable`, stableMark(release))
 	gha.SetOutput(`commit`, commit.HTMLURL)
+	gha.SetOutput(`size`, byteCountIEC(size))
 }
 
 func stableMark(release *gitea.Release) string {
