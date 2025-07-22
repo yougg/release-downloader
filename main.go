@@ -201,6 +201,7 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 	}
 	semver.Sort(hitTags)
 
+	var totalSize, size int64
 	if ref.Sources != `` {
 		srcRelease := hitReleases[hitTags[len(hitTags)-1]]
 		if srcRelease == nil {
@@ -225,13 +226,14 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 			srcName = strings.Replace(ref.Sources, `/`, `_`, -1)
 		}
 		if srcURL != `` && srcName != `` {
-			if err = download(srcURL, filepath.Join(dir, srcName), 0); err != nil {
+			if size, err = download(srcURL, filepath.Join(dir, srcName), 0); err != nil {
 				gha.Fatalf(X("download source archive %s: %v"), srcURL, err)
 				return
 			}
 			gha.Infof("url: %s", V(srcURL))
 			gha.Infof("file: %s", V(filepath.Join(wd, dir, srcName)))
 			gotSrc = true
+			totalSize += size
 		}
 		// if downloaded source and no files to be download then return
 		if gotSrc && len(ref.Files) == 0 {
@@ -241,7 +243,7 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 				return
 			}
 			gha.Infof("src tag SHA: %s\n", V(status.SHA))
-			setOutput(srcRelease, status, commit, 0)
+			setOutput(srcRelease, status, commit, size)
 			return
 		}
 	}
@@ -280,7 +282,6 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 		excludes = split.Split(ref.Exclude, -1)
 	}
 	var attachments []string
-	var totalSize int64
 	noFile := true
 	for _, a := range release.Attachments {
 		attachments = append(attachments, a.Name)
@@ -312,15 +313,15 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 			continue
 		}
 		noFile = false
-		if err = download(a.DownloadURL, filepath.Join(dir, a.Name), a.Size); err != nil {
+		if size, err = download(a.DownloadURL, filepath.Join(dir, a.Name), a.Size); err != nil {
 			gha.Fatalf(X("download attachment %s: %v"), a.Name, err)
 			return
 		}
-		totalSize += a.Size
+		totalSize += size
 		gha.Infof("")
 		gha.Infof("url: %s", V(a.DownloadURL))
 		gha.Infof("file: %s", V(filepath.Join(wd, dir, a.Name)))
-		gha.Infof("size: %s", V(byteCountIEC(a.Size)))
+		gha.Infof("size: %s", V(byteCountIEC(size)))
 		gha.Infof("createAt: %s", V(a.Created.String()))
 	}
 	if noFile {
@@ -384,35 +385,35 @@ func stableMark(release *gitea.Release) string {
 }
 
 // download will download an url and store it in local filepath
-func download(url, file string, size int64) error {
+func download(url, file string, size int64) (int64, error) {
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	req.Header.Set(`Authorization`, `token `+token)
 	// Get the data
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	// Create the file
 	out, err := os.Create(file)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer func() { _ = out.Close() }()
 	// Write the body to file
 	n, err := io.Copy(out, resp.Body)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	if size > 0 && n != size {
-		return fmt.Errorf("download invalid file size, want: %d, got: %d", size, n)
+		return 0, fmt.Errorf("download invalid file size, want: %d, got: %d", size, n)
 	}
 
-	return nil
+	return n, nil
 }
 
 func byteCountIEC(b int64) string {
