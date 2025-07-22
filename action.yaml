@@ -28,6 +28,9 @@ inputs:
   files:
     description: 'files to be download'
     required: false
+  exclude:
+    description: 'files to be exclude'
+    required: false
   batch:
     description: 'batch download files from multiple repository releases in one step'
     required: false

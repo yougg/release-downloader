@@ -25,6 +25,7 @@ type Reference struct {
 	DownloadTo string `json:"downloadTo,omitempty"`
 	Sources    string `json:"sources,omitempty"`
 	Files      string `json:"files,omitempty"`
+	Exclude    string `json:"exclude,omitempty"`
 	Single     bool   `json:"-"`
 }
 
@@ -97,6 +98,7 @@ func main() {
 			DownloadTo: getInput(`downloadTo`),
 			Sources:    getInput(`sources`),
 			Files:      getInput(`files`),
+			Exclude:    getInput(`exclude`),
 			Single:     true,
 		})
 	} else {
@@ -273,6 +275,10 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 	}
 
 	fileList := split.Split(ref.Files, -1)
+	var excludes []string
+	if ref.Exclude != `` {
+		excludes = split.Split(ref.Exclude, -1)
+	}
 	var attachments []string
 	noFile := true
 	for _, a := range release.Attachments {
@@ -290,6 +296,15 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 		}
 		if !matched {
 			continue
+		}
+		for _, exclude := range excludes {
+			exclude = strings.TrimSpace(exclude)
+			exclude = strings.Trim(exclude, `'`)
+			exclude = strings.Trim(exclude, `"`)
+			exclude = strings.TrimSpace(exclude)
+			if ok, err := filepath.Match(exclude, a.Name); err == nil && ok {
+				continue
+			}
 		}
 		noFile = false
 		if err = download(a.DownloadURL, filepath.Join(dir, a.Name), a.Size); err != nil {

@@ -17,6 +17,7 @@ The following are optional as `step.with` keys
 | `downloadTo` | String  | Download files to given directory. Defaults to working directory `.`                                                                                                        |
 | `sources`    | String  | Download source archive, `''`: skip source, `VERSION.<tar.gz\|zip>`: matched `version`, `<branch\|tag\|SHA>.<tar.gz\|zip>`: download archive by branch/tag name/commit hash | 
 | `files`      | String  | Select release attachments, `*`: all files, `example.tar.gz`: fixed file, `*.zip`: matched file list                                                                        |
+| `exclude`    | String  | Exclude files from above `files`, `*`: all files, `example.tar.xz`: fixed file, `*bootstrap*`: matched file list                                                            |
 | `batch`      | String  | JSON string, if `batch` is present, above `repository`,`prerelease`,`version`,`downloadTo`,`sources`,`files` are disabled                                                   |
 
 ## Outputs
@@ -59,6 +60,9 @@ jobs:
           files: |-          # 下载文件列表: *: 取所有文件, 固定文件: (ex: example.tar.gz), 通配文件: (ex: *.tar.gz)
             *.tar.gz
             *.zip
+          exclude: |         # 排除文件列表: *: 所有文件, 固定文件: (ex: example.tar.xz), 通配文件: (ex: *.tar.xz)
+            *.tar.xz
+            *bootstrap*
       - name: download source archive
         uses: https://github.com/yougg/release-downloader@main
         with:
@@ -137,7 +141,8 @@ jobs:
                 "prerelease": "",
                 "version": "v5.6.*",
                 "downloadTo": "output",
-                "files": "*.json, *.gz, *.zip"
+                "files": "*.json, *.gz, *.zip",
+                "exclude": "*.tar.gz"
               }
             ]
 ```
