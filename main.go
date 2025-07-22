@@ -303,8 +303,12 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 			exclude = strings.Trim(exclude, `"`)
 			exclude = strings.TrimSpace(exclude)
 			if ok, err := filepath.Match(exclude, a.Name); err == nil && ok {
-				continue
+				matched = false
+				break
 			}
+		}
+		if !matched {
+			continue
 		}
 		noFile = false
 		if err = download(a.DownloadURL, filepath.Join(dir, a.Name), a.Size); err != nil {
