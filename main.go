@@ -367,7 +367,7 @@ func releaseStatus(client *gitea.Client, owner, repo, tagName string) (status *g
 func setOutput(release *gitea.Release, status *gitea.CombinedStatus, commit *gitea.Commit, size int64) {
 	gha.SetOutput(`tag`, release.TagName)
 	gha.SetOutput(`url`, release.HTMLURL)
-	gha.SetOutput(`sha`, status.SHA)
+	gha.SetOutput(`sha`, status.SHA[:10])
 	gha.SetOutput(`time`, release.PublishedAt.Format(time.DateTime))
 	gha.SetOutput(`body`, release.Note)
 	gha.SetOutput(`user`, release.Publisher.UserName)
