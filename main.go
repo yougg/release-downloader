@@ -199,6 +199,10 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 		hitTags = append(hitTags, r.TagName)
 		hitReleases[r.TagName] = r
 	}
+	if len(hitTags) == 0 || len(hitReleases) == 0 {
+		gha.Fatalf(X("no release tag matched version rule"))
+		return
+	}
 	semver.Sort(hitTags)
 
 	var totalSize, size int64
