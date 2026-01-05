@@ -29,6 +29,10 @@ type Reference struct {
 	Single     bool   `json:"-"`
 }
 
+const (
+	retryTimes = 5
+)
+
 var (
 	addDot  = strings.NewReplacer(`*`, `.*`)
 	uniqDot = strings.NewReplacer(`..*`, `.*`)
@@ -230,7 +234,7 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 			srcName = strings.Replace(ref.Sources, `/`, `_`, -1)
 		}
 		if srcURL != `` && srcName != `` {
-			if size, err = download(srcURL, filepath.Join(dir, srcName), 0); err != nil {
+			if size, err = retryDownload(srcURL, filepath.Join(dir, srcName), 0, retryTimes); err != nil {
 				gha.Fatalf(X("download source archive %s: %v"), srcURL, err)
 				return
 			}
@@ -317,7 +321,7 @@ func fetchRelease(client *gitea.Client, ref Reference) {
 			continue
 		}
 		noFile = false
-		if size, err = download(a.DownloadURL, filepath.Join(dir, a.Name), a.Size); err != nil {
+		if size, err = retryDownload(a.DownloadURL, filepath.Join(dir, a.Name), a.Size, retryTimes); err != nil {
 			gha.Fatalf(X("download attachment %s: %v"), a.Name, err)
 			return
 		}
@@ -388,30 +392,41 @@ func stableMark(release *gitea.Release) string {
 	return `✔`
 }
 
-// download will download an url and store it in local filepath
+// retryDownload download file with retry when it failed
+func retryDownload(url, file string, size, retry int64) (n int64, err error) {
+	for range retry {
+		if n, err = download(url, file, size); err == nil && n > 0 {
+			return
+		}
+		gha.Warningf("download with error: %v, will retry...", err)
+	}
+	return
+}
+
+// download will download a url and store it in local filepath
 func download(url, file string, size int64) (int64, error) {
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("http new request: %w", err)
 	}
 	req.Header.Set(`Authorization`, `token `+token)
 	// Get the data
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("http client do request: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	// Create the file
 	out, err := os.Create(file)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("os create file: %w", err)
 	}
 	defer func() { _ = out.Close() }()
 	// Write the body to file
 	n, err := io.Copy(out, resp.Body)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("io copy http response body to file: %w", err)
 	}
 	if size > 0 && n != size {
 		return 0, fmt.Errorf("download invalid file size, want: %d, got: %d", size, n)
